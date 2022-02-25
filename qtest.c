@@ -528,7 +528,7 @@ static bool do_dedup(int argc, char *argv[])
                         free(dup_value);
                         return false;
                     }
-                    element_t *cur, *safe;
+                    element_t *cur = NULL, *safe;
                     list_for_each_entry_safe (cur, safe, dup_value, list) {
                         free(cur->value);
                         free(cur);
@@ -575,7 +575,7 @@ static bool do_dedup(int argc, char *argv[])
             free(dup_value);
             return ok && !error_check();
         }
-        element_t *cur, *safe;
+        element_t *cur = NULL, *safe;
         list_for_each_entry_safe (cur, safe, dup_value, list) {
             free(cur->value);
             free(cur);
@@ -616,7 +616,7 @@ static bool do_dedup(int argc, char *argv[])
         free(dup_value);
         return ok && !error_check();
     }
-    element_t *cur, *safe;
+    element_t *cur = NULL, *safe;
     list_for_each_entry_safe (cur, safe, dup_value, list) {
         free(cur->value);
         free(cur);
@@ -862,6 +862,56 @@ static bool do_show(int argc, char *argv[])
     return show_queue(0);
 }
 
+void q_shuffle(struct list_head *head)
+{
+    // check queue length
+    int len = q_size(head);
+    if (len <= 1)
+        return;  // NULL, empty, only 1 node
+
+
+    // do shuffle
+    for (struct list_head *ptr = head->prev; --len; ptr = ptr->prev) {
+        // pick random node and put at node[len]
+        int target = rand() % (len + 1);
+
+        // swap if target != len
+        if (target != len) {
+            // move to target node
+            struct list_head *node = head->next;
+            for (int i = 0; i < target; ++i)
+                node = node->next;
+
+            // swap node data
+            element_t *ptr_entry = container_of(ptr, element_t, list);
+            element_t *node_entry = container_of(node, element_t, list);
+
+            char *tmp = ptr_entry->value;
+            ptr_entry->value = node_entry->value;
+            node_entry->value = tmp;
+        }
+    }
+}
+
+static bool do_shuffle(int argc, char *argv[])
+{
+    // check queue length
+    if (!l_meta.l)
+        report(3, "Warning: Calling shuffle on null queue");
+    else if (q_size(l_meta.l) == 0)
+        report(3, "Warning: Calling shuffle on empty queue");
+    error_check();
+
+
+    if (exception_setup(true))
+        q_shuffle(l_meta.l);
+    exception_cancel();
+
+    show_queue(3);
+
+    return !error_check();
+}
+
 static void console_init()
 {
     ADD_COMMAND(new, "                | Create new queue");
@@ -895,6 +945,7 @@ static void console_init()
         dedup, "                | Delete all nodes that have duplicate string");
     ADD_COMMAND(swap,
                 "                | Swap every two adjacent nodes in queue");
+    ADD_COMMAND(shuffle, "                | Shuffle queue");
     add_param("length", &string_length, "Maximum length of displayed string",
               NULL);
     add_param("malloc", &fail_probability, "Malloc failure probability percent",
