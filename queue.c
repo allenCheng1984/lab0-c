@@ -21,7 +21,10 @@ struct list_head *q_new()
 }
 
 /* Free all storage used by queue */
-void q_free(struct list_head *l) {}
+void q_free(struct list_head *l)
+{
+    printf("Hello World!\n");
+}
 
 /*
  * Attempt to insert element at head of queue.
